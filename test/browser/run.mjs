@@ -58,23 +58,29 @@ const server = http.createServer((req, res) => {
   res.end(fs.readFileSync(file));
 });
 
-function runPage(chrome, url, key){
-  return new Promise((resolve, reject) => {
-    const profile = fs.mkdtempSync(path.join(os.tmpdir(), "scrub-"));
-    const child = spawn(chrome, ["--headless=new", "--disable-gpu", "--no-sandbox",
-      "--disable-dev-shm-usage", "--user-data-dir=" + profile, url],
-      {stdio: "ignore"});
+async function runPage(chrome, url, key){
+  const profile = fs.mkdtempSync(path.join(os.tmpdir(), "scrub-"));
+  const child = spawn(chrome, ["--headless=new", "--disable-gpu", "--no-sandbox",
+    "--disable-dev-shm-usage", "--no-first-run", "--no-default-browser-check",
+    "--disable-extensions", "--user-data-dir=" + profile, url], {stdio: "ignore"});
+  try {
     const started = Date.now();
-    const poll = setInterval(() => {
-      if (results.has(key)){
-        clearInterval(poll); child.kill(); fs.rmSync(profile, {recursive: true, force: true});
-        resolve(results.get(key));
-      } else if (Date.now() - started > 120000){
-        clearInterval(poll); child.kill(); fs.rmSync(profile, {recursive: true, force: true});
-        reject(new Error(key + ": timed out"));
-      }
-    }, 200);
-  });
+    while (!results.has(key)){
+      if (Date.now() - started > 120000) throw new Error(key + ": timed out");
+      await new Promise(r => setTimeout(r, 200));
+    }
+    return results.get(key);
+  } finally {
+    // Chrome keeps writing to its profile while it shuts down, so wait for it to
+    // actually exit before deleting. Cleanup must never fail the run.
+    child.kill();
+    await new Promise(r => { child.once("exit", r); setTimeout(r, 5000); });
+    try {
+      fs.rmSync(profile, {recursive: true, force: true, maxRetries: 10, retryDelay: 200});
+    } catch (e) {
+      console.log(`  note  could not remove temp profile ${profile} (${e.code})`);
+    }
+  }
 }
 
 /* ---------- assertions ---------- */
