@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Remove Image Metadata — EXIF, GPS &amp; XMP Stripper | Scrub</title>
+<meta name="description" content="Free online EXIF remover for JPEG and PNG. Strip GPS, camera and XMP metadata, forge new EXIF, or alter pixels — all in your browser. Nothing is uploaded.">
+<link rel="canonical" href="https://itsjustadarsh.github.io/scrub/">
+<meta name="robots" content="index, follow, max-image-preview:large">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#fbfbfa" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#0e0e0d" media="(prefers-color-scheme: dark)">
+<meta name="author" content="itsjustadarsh">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Scrub">
+<meta property="og:title" content="Remove Image Metadata — EXIF, GPS &amp; XMP Stripper">
+<meta property="og:description" content="Strip EXIF and GPS from JPEG and PNG, forge new camera metadata, or alter pixels. Runs entirely in your browser — no uploads, no account, no cost.">
+<meta property="og:url" content="https://itsjustadarsh.github.io/scrub/">
+<meta property="og:image" content="https://itsjustadarsh.github.io/scrub/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Scrub — remove image metadata in your browser">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Remove Image Metadata — EXIF, GPS &amp; XMP Stripper">
+<meta name="twitter:description" content="Strip EXIF and GPS from JPEG and PNG, forge new camera metadata, or alter pixels. Entirely in your browser.">
+<meta name="twitter:image" content="https://itsjustadarsh.github.io/scrub/og.png">
+
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%23111110'/%3E%3Cpath d='M9 20.5c0 1.7 1.6 2.9 4 2.9 2.5 0 4-1.2 4-3 0-1.6-1-2.4-3.4-3l-1.3-.3c-1-.3-1.5-.7-1.5-1.4 0-.8.7-1.3 1.8-1.3 1.2 0 1.9.5 2 1.4h2.3c-.1-1.9-1.7-3.2-4.2-3.2-2.4 0-4.1 1.3-4.1 3.3 0 1.6 1 2.6 3.2 3.1l1.4.3c1.1.3 1.6.7 1.6 1.4 0 .8-.8 1.3-2 1.3-1.3 0-2.1-.5-2.2-1.5z' fill='%23fbfbfa'/%3E%3Crect x='19' y='9' width='2' height='14' rx='1' fill='%23c2410c'/%3E%3Crect x='23' y='13' width='2' height='10' rx='1' fill='%23c2410c' opacity='.55'/%3E%3C/svg%3E">
+<link rel="stylesheet" href="styles.css">
+<!--json-ld-->
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1><b>scrub</b> <span>— image metadata remover</span></h1>
+  <span class="tag">strip · forge · alter pixels — nothing leaves this tab</span>
+  <span class="spacer"></span>
+  <button class="ghost" id="theme" type="button">theme</button>
+</header>
+
+<main>
+<div id="drop" tabindex="0" role="button" aria-label="Choose images">
+  <div class="big">Drop JPEG or PNG files</div>
+  <div class="sub">click · drag · ⌘V — everything stays on your machine</div>
+</div>
+<input type="file" id="picker" accept="image/jpeg,image/png" multiple hidden>
+
+<div class="bar">
+  <span class="lbl">meta</span>
+  <div class="seg" role="group" aria-label="Metadata mode">
+    <button type="button" id="m-strip" aria-pressed="true">STRIP</button>
+    <button type="button" id="m-forge" aria-pressed="false">STRIP + FORGE</button>
+  </div>
+  <span class="tag" id="modenote">removes every EXIF, GPS, XMP, IPTC, ICC and text record</span>
+</div>
+
+<div class="bar">
+  <span class="lbl">pixels</span>
+  <div class="seg" role="group" aria-label="Pixel mode">
+    <button type="button" id="p-off" aria-pressed="true">OFF</button>
+    <button type="button" id="p-subtle" aria-pressed="false">SUBTLE</button>
+    <button type="button" id="p-medium" aria-pressed="false">MEDIUM</button>
+    <button type="button" id="p-heavy" aria-pressed="false">HEAVY</button>
+    <button type="button" id="p-custom" aria-pressed="false">CUSTOM</button>
+  </div>
+  <span class="tag" id="pixnote">pixels pass through untouched — bit-identical output</span>
+</div>
+
+<div class="panel" id="pixpanel" hidden>
+  <p class="warn" id="pixwarn"></p>
+  <div class="frow">
+    <label style="flex:1;min-width:160px"><span>seed — same seed, same result</span>
+      <input id="x-seed" inputmode="numeric"></label>
+    <button class="mini" type="button" id="reseed" style="padding:6px 10px">reseed</button>
+  </div>
+  <details class="adv">
+    <summary>manual controls</summary>
+    <div class="grid">
+      <label><span>noise ±levels</span><input id="x-noise" inputmode="decimal"></label>
+      <label><span>grain σ</span><input id="x-grain" inputmode="decimal"></label>
+      <label><span>rescale %</span><input id="x-scale" inputmode="decimal"></label>
+      <label><span>crop px</span><input id="x-crop" inputmode="numeric"></label>
+      <label><span>rotate °</span><input id="x-rot" inputmode="decimal"></label>
+      <label><span>brightness %</span><input id="x-bright" inputmode="decimal"></label>
+      <label><span>contrast %</span><input id="x-contrast" inputmode="decimal"></label>
+      <label><span>saturation %</span><input id="x-sat" inputmode="decimal"></label>
+      <label><span>jpeg quality</span><input id="x-quality" inputmode="numeric"></label>
+    </div>
+  </details>
+</div>
+
+<div class="panel" id="forge" hidden>
+  <div class="frow">
+    <label style="flex:1;min-width:200px"><span>camera preset</span><select id="preset"></select></label>
+    <button class="mini" type="button" id="roll" style="padding:6px 10px">randomize all</button>
+  </div>
+
+  <div class="grp"><div class="ghead">Camera</div><div class="grid">
+    <label><span>make</span><input id="f-make" placeholder="Apple"></label>
+    <label><span>model</span><input id="f-model" placeholder="iPhone 16 Pro"></label>
+    <label><span>lens</span><input id="f-lens" placeholder="iPhone 16 Pro back camera"></label>
+    <label><span>software</span><input id="f-software" placeholder="18.1"></label>
+  </div></div>
+
+  <div class="grp"><div class="ghead">Exposure</div><div class="grid">
+    <label><span>shutter (sec)</span><input id="f-shutter" placeholder="1/250"></label>
+    <label><span>aperture (f)</span><input id="f-fnum" placeholder="1.78"></label>
+    <label><span>iso</span><input id="f-iso" placeholder="64"></label>
+    <label><span>focal (mm)</span><input id="f-focal" placeholder="6.8"></label>
+    <label><span>focal 35mm eq</span><input id="f-focal35" placeholder="24"></label>
+    <label><span>flash</span><select id="f-flash">
+      <option value="0">did not fire</option><option value="1">fired</option>
+      <option value="16">off, compulsory</option><option value="24">auto, did not fire</option>
+      <option value="25">auto, fired</option></select></label>
+  </div></div>
+
+  <div class="grp"><div class="ghead">Location</div><div class="grid">
+    <label style="grid-column:span 2"><span>coordinates — paste "lat, lng" from any map</span>
+      <input id="f-gps" placeholder="37.8199, -122.4783"></label>
+    <label><span>altitude (m)</span><input id="f-alt" placeholder="64"></label>
+    <label><span>city shortcut</span><select id="f-city"></select></label>
+  </div></div>
+
+  <div class="grp"><div class="ghead">Authorship &amp; time</div><div class="grid">
+    <label><span>date taken</span><input id="f-date" type="datetime-local"></label>
+    <label><span>artist</span><input id="f-artist" placeholder="optional"></label>
+    <label><span>copyright</span><input id="f-copy" placeholder="optional"></label>
+    <label><span>output suffix</span><input id="f-suffix" placeholder="_meta"></label>
+  </div></div>
+</div>
+
+<div class="act">
+  <button class="solid" id="go" disabled>Process</button>
+  <button class="mini" id="zip" disabled style="padding:7px 12px">Download all (.zip)</button>
+  <button class="mini" id="clear" disabled style="padding:7px 12px">Clear</button>
+  <span id="status"></span>
+</div>
+
+<div id="queue" hidden></div>
+</main>
+
+<article class="prose">
+  <h2>What this tool does</h2>
+  <p>Every photo you take carries a second file inside it. A JPEG straight off a phone
+  typically holds the camera make and model, the lens, the exposure settings, the exact
+  second the shutter opened, the phone's software version, and — unless you turned it
+  off — the GPS coordinates of where you were standing. PNGs carry text chunks that
+  editors and generators quietly fill with software names, prompts and timestamps.
+  <strong>Scrub</strong> removes all of it, in your browser, without uploading anything.</p>
+
+  <h2>How it works</h2>
+  <ol>
+    <li><strong>Drop your images in.</strong> They are read with the browser's file API and
+    never leave the page — there is no server to send them to.</li>
+    <li><strong>Pick what happens.</strong> Strip metadata only, strip and write believable
+    replacement EXIF, and optionally alter the pixels themselves.</li>
+    <li><strong>Download.</strong> One file at a time, or the whole batch as a ZIP. Hit
+    <code>inspect</code> on any row first to see exactly what was found and what's left.</li>
+  </ol>
+  <p>Stripping is done by <strong>byte surgery, not re-encoding</strong>. The file's segment
+  structure is walked and the metadata records are dropped; the compressed image data is
+  copied through untouched. The decoded pixels come out bit-identical to the original, and
+  the file gets smaller rather than worse. Most online EXIF removers redraw your photo onto a
+  canvas and re-save it, which silently re-compresses it every time.</p>
+
+  <h2>What each format hides</h2>
+  <div class="scroll"><table>
+    <thead><tr><th>Record</th><th>Where</th><th>What it can leak</th></tr></thead>
+    <tbody>
+      <tr><td>EXIF</td><td>JPEG, PNG</td><td>Camera make and model, lens, serial number, exposure, software version, original date and time</td></tr>
+      <tr><td>GPS IFD</td><td>JPEG, PNG</td><td>Latitude, longitude, altitude and UTC timestamp — often accurate to a few metres</td></tr>
+      <tr><td>XMP</td><td>JPEG, PNG</td><td>Editing history, author, ratings, keywords, generator and prompt strings</td></tr>
+      <tr><td>IPTC / Photoshop</td><td>JPEG</td><td>Captions, credit lines, contact details, source and copyright records</td></tr>
+      <tr><td>ICC profile</td><td>JPEG, PNG</td><td>Which display or scanner produced the file</td></tr>
+      <tr><td>tEXt / iTXt / zTXt</td><td>PNG</td><td>Free-form text — software names, comments, generation parameters</td></tr>
+      <tr><td>Trailing bytes</td><td>JPEG</td><td>Anything appended after the end-of-image marker; a common way to smuggle data inside a photo</td></tr>
+    </tbody>
+  </table></div>
+
+  <h2>Forging metadata</h2>
+  <p>Stripping leaves an obviously blank file. The forge mode writes a complete, internally
+  consistent EXIF block in its place: a real camera body, a lens that belongs on it, exposure
+  values that hang together, GPS coordinates you choose, and a date with the right timezone
+  offset. Nine presets cover common phones and bodies so the numbers stay plausible — a phone
+  preset will not hand you f/1.4 at 200mm.</p>
+
+  <h2>About changing pixels</h2>
+  <p>Removing metadata does not change the image itself. Two copies of the same photo still
+  hash to the same value and still match each other under reverse image search. The pixel
+  modes change that, at three strengths:</p>
+  <ul>
+    <li><strong>Subtle</strong> — a dithered ±1 level of noise and a high-quality re-encode.
+    Visually identical, but every byte differs.</li>
+    <li><strong>Medium</strong> — adds a small rescale and crop, which shifts the structure
+    the image is measured by.</li>
+    <li><strong>Heavy</strong> — adds grain, a slight tone curve and a fraction of a degree of
+    rotation.</li>
+  </ul>
+  <p>The tool measures the result rather than making promises. After processing, each row
+  reports the average pixel change, the share of pixels affected, and the Hamming distance
+  between the original and the output under a difference hash — the same family of perceptual
+  hash used for image matching. You will see that subtle mode barely moves that distance;
+  that is the honest answer, not a flaw being hidden.</p>
+  <p>To be plain about the limits: changing pixels defeats exact-file matching and destroys
+  data hidden in the low bits. It does <strong>not</strong> reliably defeat robust invisible
+  watermarking such as SynthID, and it does not defeat AI-image detectors. If that is what
+  you need, no browser tool is going to give it to you honestly.</p>
+
+  <h2>Frequently asked questions</h2>
+
+  <details class="faq"><summary>Does this upload my photos anywhere?</summary>
+  <p>No. There is no server, no API call and no analytics. The page is a single HTML file and
+  all processing happens in your browser. You can disconnect from the internet, reload, and it
+  will still work.</p></details>
+
+  <details class="faq"><summary>Is it really free?</summary>
+  <p>Yes, with no account, no watermark, no file-size cap and no paid tier. It costs nothing to
+  run because your own device does the work.</p></details>
+
+  <details class="faq"><summary>Will removing metadata reduce my image quality?</summary>
+  <p>No. Metadata is stripped by removing records from the file structure, not by re-saving the
+  image, so the compressed pixel data is copied across untouched. Quality only changes if you
+  deliberately turn on a pixel mode, which re-encodes the image.</p></details>
+
+  <details class="faq"><summary>Can I remove only the GPS location and keep the rest?</summary>
+  <p>Not selectively in one pass — stripping removes everything. To keep most of your data
+  while dropping the location, use strip and forge together: copy the camera fields you want to
+  keep into the form and leave the coordinates field empty.</p></details>
+
+  <details class="faq"><summary>Does it work offline?</summary>
+  <p>Yes. Save the page and open it with no network connection. Nothing it needs is loaded from
+  anywhere else.</p></details>
+
+  <details class="faq"><summary>What file formats are supported?</summary>
+  <p>JPEG and PNG, including progressive JPEG, palette and 16-bit PNG, and animated PNG. HEIC,
+  WebP, TIFF and RAW files are not supported.</p></details>
+
+  <details class="faq"><summary>What is the difference between stripping metadata and changing pixels?</summary>
+  <p>Stripping removes the records attached to the image. Changing pixels alters the image data
+  itself, so the file no longer matches other copies by hash. They are independent — you can use
+  either, both or neither.</p></details>
+
+  <details class="faq"><summary>Does this defeat AI image detection or invisible watermarks?</summary>
+  <p>No. Robust watermarks such as SynthID are designed to survive noise, re-compression,
+  cropping and rescaling, and AI detectors look at image statistics rather than metadata. This
+  tool does not claim otherwise, and you should be suspicious of any tool that does.</p></details>
+
+  <details class="faq"><summary>Will removing EXIF rotate my photo?</summary>
+  <p>No. The orientation flag is part of what gets removed, so the tool never relies on it and
+  never re-rotates your image. Pixels are stored exactly as they were.</p></details>
+
+  <details class="faq"><summary>Can I process many images at once?</summary>
+  <p>Yes. Drop in as many as you like, process them in one pass, then download them individually
+  or as a single ZIP file.</p></details>
+
+  <h2>Verify it yourself</h2>
+  <p>Nothing here asks to be trusted. Process a file and check it with
+  <code>exiftool clean.jpg</code>, or in Python compare the decoded bitmaps before and after to
+  confirm the strip really was lossless. The source is a single readable file — read it.</p>
+</article>
+
+<footer>
+  <span>Runs entirely in your browser. No uploads, no tracking, no cost.</span>
+  <a href="https://github.com/itsjustadarsh/scrub">Source on GitHub</a>
+</footer>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>

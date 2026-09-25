@@ -1,0 +1,88 @@
+<!doctype html><meta charset="utf-8"><title>ui driver</title>
+<p>Driving the built index.html in an iframe.</p>
+<script>
+/* Drives the shipped artifact — the real index.html, through real controls. */
+const log = [];
+const wait = (fn, ms = 30000) => new Promise((res, rej) => {
+  const t0 = Date.now();
+  (function poll(){
+    let v = null;
+    try { v = fn(); } catch(e){}
+    if (v) return res(v);
+    if (Date.now() - t0 > ms) return rej(new Error("timed out waiting for: " + fn));
+    setTimeout(poll, 60);
+  })();
+});
+
+(async () => {
+  const frame = document.createElement("iframe");
+  frame.style.cssText = "width:1200px;height:900px;border:0";
+  frame.src = "/index.html";
+  document.body.appendChild(frame);
+  await new Promise(r => frame.onload = r);
+
+  const doc = frame.contentDocument, win = frame.contentWindow;
+  const errors = [];
+  win.addEventListener("error", e => errors.push(String(e.message)));
+  win.addEventListener("unhandledrejection", e => errors.push("rejection: " + e.reason));
+  const $ = id => doc.getElementById(id);
+
+  const dt = new DataTransfer();
+  for (const n of ["photo.jpg", "meta.png"]){
+    const blob = await (await fetch("/test/fixtures/" + n)).blob();
+    dt.items.add(new File([blob], n, {type: n.endsWith("jpg") ? "image/jpeg" : "image/png"}));
+  }
+  $("picker").files = dt.files;
+  $("picker").dispatchEvent(new Event("change"));
+
+  await wait(() => doc.querySelectorAll(".item").length === 2 && $("go").disabled === false);
+  log.push("queued " + doc.querySelectorAll(".item").length + " files");
+
+  /* strip only */
+  $("go").click();
+  await wait(() => /processed/.test($("status").textContent) && !$("zip").disabled);
+  const stripStatus = $("status").textContent;
+  log.push("strip: " + stripStatus);
+
+  /* strip + forge + medium pixels, driven through the actual controls */
+  $("m-forge").click();
+  const forgeVisible = !$("forge").hidden;
+  $("p-medium").click();
+  const pixVisible = !$("pixpanel").hidden;
+  const warn = $("pixwarn").textContent;
+  $("preset").value = "xt5"; $("preset").dispatchEvent(new Event("change"));
+  $("f-gps").value = "48.8566, 2.3522"; $("f-gps").dispatchEvent(new Event("input"));
+  const staleAfterEdit = $("zip").disabled;
+
+  $("go").click();
+  await wait(() => /processed/.test($("status").textContent) && !$("zip").disabled);
+  const fullStatus = $("status").textContent;
+  log.push("forge+pixels: " + fullStatus);
+
+  doc.querySelector("[data-x]").click();
+  await wait(() => doc.querySelector(".cmp"));
+  const stats = doc.querySelector(".stats").textContent.replace(/\s+/g, " ").trim();
+  const afterRows = doc.querySelectorAll(".item:first-child .cols .col:last-child .tbl tr").length;
+
+  /* a knob edit must move you to the custom tier and invalidate results */
+  $("x-noise").value = "3"; $("x-noise").dispatchEvent(new Event("input"));
+  const tierNow = [...doc.querySelectorAll('.seg button[aria-pressed="true"]')].map(b => b.id);
+
+  /* clear empties the queue and disables the actions again */
+  $("clear").click();
+  const cleared = doc.querySelectorAll(".item").length === 0 && $("go").disabled && $("zip").disabled;
+
+  frame.style.width = "400px";
+  await new Promise(r => setTimeout(r, 300));
+  const overflow = doc.documentElement.scrollWidth;
+
+  await fetch("/result/ui", {method: "POST", body: JSON.stringify({
+    log, stripStatus, fullStatus, forgeVisible, pixVisible, warn, staleAfterEdit,
+    stats, afterRows, tierNow, cleared, overflow, errors,
+    focusable: doc.querySelectorAll("button, input:not([hidden]), select, summary, a").length,
+    h1: doc.querySelectorAll("h1").length
+  })});
+  document.body.append("done");
+})().catch(e => fetch("/result/ui", {method: "POST",
+  body: JSON.stringify({error: e.message + "\n" + e.stack})}));
+</script>

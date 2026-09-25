@@ -1,0 +1,72 @@
+<!doctype html><meta charset="utf-8"><title>pixel engine</title>
+<p>Running the pixel engine. Results are posted back to the test runner.</p>
+<script type="module">
+/* Exercises src/js/pixels.js in a real browser — it needs canvas, so Node can't. */
+import { TIERS, pixelPass, dhash, hamming } from "/src/js/pixels.js";
+import { parseJPEG, stripJPEG, buildJPEG, jpegSize } from "/src/js/jpeg.js";
+import { parsePNG, stripPNG, buildPNG, pngSize } from "/src/js/png.js";
+import { injectJPEG } from "/src/js/jpeg.js";
+import { injectPNG } from "/src/js/png.js";
+import { readMeta } from "/src/js/exif-read.js";
+import { buildTIFF } from "/src/js/exif-write.js";
+
+const FIX = "/test/fixtures/";
+const FORGE = {make:"SONY", model:"ILCE-7M4", lens:"FE 35mm F1.4 GM", software:"Capture One 16.5",
+  shutter:"1/250", fnumber:"1.8", iso:"320", focal:"35", focal35:"35", flash:"0",
+  altitude:"64", artist:"Nobody", copyright:"CC0", gps:{lat:37.8199, lng:-122.4783}};
+const WHEN = new Date(2023, 6, 14, 9, 30, 15);
+
+const fetchFile = async name => {
+  const blob = await (await fetch(FIX + name)).blob();
+  const mime = /\.jpe?g$/.test(name) ? "image/jpeg" : "image/png";
+  return new File([blob], name, {type: mime});
+};
+
+(async () => {
+  const results = [];
+  for (const name of ["photo.jpg", "photo.png", "meta.jpg"]){
+    const file = await fetchFile(name);
+    const mime = file.type;
+    for (const tier of ["subtle", "medium", "heavy"]){
+      const r = await pixelPass(file, TIERS[tier], 987654321, mime);
+      const forge = tier === "heavy";          // check forging still works after a re-encode
+      let out, after;
+      if (mime === "image/jpeg"){
+        const p = parseJPEG(r.bytes);
+        let segs = stripJPEG(p.segs);
+        if (forge) segs = injectJPEG(segs, buildTIFF(FORGE, WHEN, jpegSize(p.segs)));
+        out = buildJPEG(segs);
+        after = readMeta("jpeg", parseJPEG(out));
+      } else {
+        const c = parsePNG(r.bytes);
+        let ch = stripPNG(c);
+        if (forge) ch = injectPNG(ch, buildTIFF(FORGE, WHEN, pngSize(c)), FORGE, WHEN);
+        out = buildPNG(ch);
+        after = readMeta("png", parsePNG(out));
+      }
+      results.push({name, tier, forge, stats: r.stats, bytes: out.length,
+        meta: after.filter(x => x.group !== "JFIF").map(x => x.name)});
+    }
+  }
+
+  /* the seed contract: same seed reproduces byte for byte, a new seed doesn't */
+  const f = await fetchFile("photo.jpg");
+  const a = await pixelPass(f, TIERS.medium, 42, "image/jpeg");
+  const b = await pixelPass(f, TIERS.medium, 42, "image/jpeg");
+  const c = await pixelPass(f, TIERS.medium, 43, "image/jpeg");
+  const identical = (x, y) => x.length === y.length && x.every((v, i) => v === y[i]);
+
+  /* dHash has to actually discriminate, or reporting 0 means nothing */
+  const one = await createImageBitmap(await (await fetch(FIX + "photo.jpg")).blob());
+  const two = await createImageBitmap(await (await fetch(FIX + "meta.jpg")).blob());
+
+  await fetch("/result/pixels", {method: "POST", body: JSON.stringify({
+    results,
+    seedStable: identical(a.bytes, b.bytes),
+    seedVaries: !identical(a.bytes, c.bytes),
+    dhashSanity: hamming(dhash(one), dhash(two))
+  })});
+  document.body.append("done");
+})().catch(e => fetch("/result/pixels", {method: "POST",
+  body: JSON.stringify({error: e.message + "\n" + e.stack})}));
+</script>

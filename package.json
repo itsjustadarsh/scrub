@@ -1,0 +1,17 @@
+{
+  "name": "scrub",
+  "version": "2.0.0",
+  "description": "Strip, forge and alter image metadata entirely in the browser",
+  "type": "module",
+  "private": true,
+  "license": "MIT",
+  "scripts": {
+    "dev": "node scripts/serve.mjs src 8080",
+    "build": "node build.mjs",
+    "check": "node build.mjs --check",
+    "test": "node --test test/*.test.mjs",
+    "test:browser": "node test/browser/run.mjs",
+    "test:verify": "python3 test/verify.py"
+  },
+  "engines": { "node": ">=20" }
+}

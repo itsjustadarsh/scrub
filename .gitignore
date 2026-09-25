@@ -1,0 +1,28 @@
+# macOS
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+
+# editors
+.vscode/
+.idea/
+*.swp
+*~
+
+# logs and scratch
+*.log
+scratch/
+tmp/
+
+# test images and generated output — the fixtures are disposable,
+# and anything the tool produces locally shouldn't be committed
+*_clean.jpg
+*_clean.png
+*_meta.jpg
+*_meta.png
+scrubbed.zip
+
+# node, if tooling is ever added
+node_modules/
+package-lock.json
